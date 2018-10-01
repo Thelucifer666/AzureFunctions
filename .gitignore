@@ -3,8 +3,8 @@ obj
 csx
 .vs
 edge
-.key
-.keys
+*.key
+*.keys
 Publish
 
 *.user
