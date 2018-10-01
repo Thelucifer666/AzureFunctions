@@ -1,6 +1,6 @@
-# HttpTrigger - PowerShell
+# List MFA Enabled Users - PowerShell
 
-The `HttpTrigger` makes it incredibly easy to have your functions executed via an HTTP call to your function.
+This Azure function retrieves the list of user accounts that have Multi Factor Authentication enabled either directly or via conditional access.
 
 ## How it works
 

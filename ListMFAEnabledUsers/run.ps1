@@ -20,9 +20,12 @@ catch{
 }
 # Connect to MSOnline
 try{
+    Write-Output "Credentials obtained"
+    Write-Output "Connecting to O365"
     Connect-MsolService -Credential $credential
 }
 catch{
+    Write-Output "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
     $Out = "Time Elapsed = $($Timer.Elapsed.ToString())
     Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
     $Timer.Stop()
@@ -30,9 +33,12 @@ catch{
     Return
 }
 try{
+    Write-Output "Connected to O365"
+    Write-Output "Conneting to Azure AD"
     Connect-AzureAD -Credential $credential
 }
 catch{
+    Write-Output "Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
     $Out = "Time Elapsed = $($Timer.Elapsed.ToString())
     Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
     $Timer.Stop()
@@ -42,9 +48,12 @@ catch{
 $g = new-object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
 $g.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29"
 try{
+    Write-Output "Connected to Azure AD"
+    Write-Output "Get all Users"
     $Users = Get-MsolUser -EnabledFilter EnabledOnly -All
 }
 catch{
+    Write-Output "Failed getting users"
     $out = "Time Elapsed = $($Timer.Elapsed.ToString())
     $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
     $Timer.Stop()
@@ -54,6 +63,7 @@ catch{
 If ($Users){
     $out = @()
     foreach($User in $Users){
+        Write-Output "Processing user $($User)"
         if($User.ImmutableId){
             $AccountType = "On-Prem"
         } Else {
@@ -78,12 +88,14 @@ If ($Users){
         $out += $O
     }
 } Else {
+    Write-Output "0 Users retrieved from O365"
     $Out = "Time Elapsed = $($Timer.Elapsed.ToString())
     0 Users retrieved from O365"
     Out-File -Encoding Ascii -FilePath $res -inputObject $Out
     Return
 }
 $Out += $Timer.Elapsed.ToString()
+Write-Output "Completed execution Time elapsed: $($Timer.Elapsed.ToString())"
 $Timer.Stop()
 Out-File -Encoding Ascii -FilePath $res -inputObject $out
 Return
