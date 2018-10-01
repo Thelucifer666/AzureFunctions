@@ -4,15 +4,27 @@ $Timer =  [system.diagnostics.stopwatch]::StartNew()
 try{
     $username = $Env:user
     $pw = $Env:password
-    Import-Module "D:\home\site\wwwroot\ListMFAEnabledUsers\PSModules\MSOnline\1.1.183.17\MSOnline.psd1"
-    Import-Module "D:\home\site\wwwroot\ListMFAEnabledUsers\PSModules\AzureAD\2.0.1.16\AzureAD.psd1"
-    # Build Credentials
     $keypath = "D:\home\site\wwwroot\ListMFAEnableUser\PassEncryptKey.key"
     $secpassword = $pw | ConvertTo-SecureString -Key (Get-Content $keypath)
     $credential = New-Object System.Management.Automation.PSCredential ($username, $secpassword)
 }
 catch{
     $Out = "Creating the credential object failed.
+    $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
+    $Timer.Stop()
+    Out-File -Encoding Ascii -FilePath $res -inputObject $Out
+    Return
+}
+try{
+    Write-Output "Importing MSOnline PS Module"
+    Import-Module "D:\home\site\wwwroot\ListMFAEnabledUsers\bin\MSOnline\1.1.183.17\MSOnline.psd1"
+    Write-Output "Imported MSOnline PS Module"
+    Write-Output "Importing AzureAD PS Module"
+    Import-Module "D:\home\site\wwwroot\ListMFAEnabledUsers\bin\AzureAD\2.0.1.16\AzureAD.psd1"
+    Write-Output "Imported MSOnline PS Module"
+}
+catch{
+    $Out = "Importing module failed.
     $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
     $Timer.Stop()
     Out-File -Encoding Ascii -FilePath $res -inputObject $Out
