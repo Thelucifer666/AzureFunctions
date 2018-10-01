@@ -1,3 +1,6 @@
+$requestBody = Get-Content $req -Raw | ConvertFrom-Json
+$email = $requestBody.emailAddress
+Out-File -Encoding Ascii -FilePath $res -inputObject "Report on MFA enabled users will be sent to $($email)"
 Write-Output "Function started execution at $(Get-Date) "
 Write-Output "Gathering credentials"
 $Timer =  [system.diagnostics.stopwatch]::StartNew()
@@ -60,7 +63,7 @@ catch{
     Return
 }
 $g = new-object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
-$g.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29"
+$g.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29","0b07dff6-392e-438c-9298-20c1a6a86077","4e086602-3259-40e2-b7c7-92cc7d99dded"
 try{
     Write-Output "Connected to Azure AD"
     Write-Output "Get all Users"
@@ -88,7 +91,7 @@ If ($Users){
         } Else {
             $UserMFASetting = "Disabled"
         }
-        If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g){
+        If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
             $MFAConditionalAccess = "Enabled"
         } Else {
             $MFAConditionalAccess = "Disabled"
