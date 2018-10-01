@@ -4,7 +4,7 @@ $Timer =  [system.diagnostics.stopwatch]::StartNew()
 try{
     $username = $Env:user
     $pw = $Env:password
-    $keypath = "D:\home\site\wwwroot\ListMFAEnableUser\PassEncryptKey.key"
+    $keypath = "D:\home\site\wwwroot\bin\keys\PassEncryptKey.key"
     $secpassword = $pw | ConvertTo-SecureString -Key (Get-Content $keypath)
     $credential = New-Object System.Management.Automation.PSCredential ($username, $secpassword)
 }
@@ -16,11 +16,14 @@ catch{
     Return
 }
 try{
+    Write-Output "Credentials obtained"
+    Write-Output "Updating PS Module Path environment variable"
+    $env:PSModulePath = $env:PSModulePath + ";d:\home\site\wwwroot\bin\modules\"
     Write-Output "Importing MSOnline PS Module"
-    Import-Module "D:\home\site\wwwroot\ListMFAEnabledUsers\bin\MSOnline\1.1.183.17\MSOnline.psd1"
+    Import-Module MSOnline
     Write-Output "Imported MSOnline PS Module"
     Write-Output "Importing AzureAD PS Module"
-    Import-Module "D:\home\site\wwwroot\ListMFAEnabledUsers\bin\AzureAD\2.0.1.16\AzureAD.psd1"
+    Import-Module AzureAD
     Write-Output "Imported MSOnline PS Module"
 }
 catch{
@@ -32,7 +35,6 @@ catch{
 }
 # Connect to MSOnline
 try{
-    Write-Output "Credentials obtained"
     Write-Output "Connecting to O365"
     Connect-MsolService -Credential $credential
 }
@@ -75,7 +77,7 @@ catch{
 If ($Users){
     $out = @()
     foreach($User in $Users){
-        Write-Output "Processing user $($User)"
+        Write-Output "Processing user $($User.UserPrincipalName)"
         if($User.ImmutableId){
             $AccountType = "On-Prem"
         } Else {
