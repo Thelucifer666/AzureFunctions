@@ -17,7 +17,7 @@ If ($UPN){
                 Result = "Failure"
                 UserPrincipalName = $UPN
                 Type = $null
-                MFAConditionalAccess = $null
+                MAMConditionalAccess = $null
                 EMSLicenseStatus = $null
                 Error = "Creating the credential object failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
@@ -31,9 +31,6 @@ If ($UPN){
             Write-Output "Credentials obtained"
             Write-Output "Updating PS Module Path environment variable"
             $env:PSModulePath = $env:PSModulePath + ";d:\home\site\wwwroot\bin\modules\"
-            Write-Output "Importing MSOnline PS Module"
-            Import-Module MSOnline
-            Write-Output "Imported MSOnline PS Module"
             Write-Output "Importing AzureAD PS Module"
             Import-Module AzureAD
             Write-Output "Imported MSOnline PS Module"
@@ -54,26 +51,6 @@ If ($UPN){
             Return
         }
         try{
-            Write-Output "Connecting to O365"
-            Connect-MsolService -Credential $credential
-        }
-        catch{
-            Write-Output "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
-            $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
-                UserPrincipalName = $UPN
-                Type = $null
-                MAMConditionalAccess = $null
-                EMSLicenseStatus = $null
-                Error = "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
-            }
-            $Out = $O | ConvertTo-Json
-            $Timer.Stop()
-            Out-File -Encoding Ascii -FilePath $res -inputObject $Out
-            Return
-        }
-        try{
-            Write-Output "Connected to O365"
             Write-Output "Conneting to Azure AD"
             Connect-AzureAD -Credential $credential
             Write-Output "Connected to Azure AD"

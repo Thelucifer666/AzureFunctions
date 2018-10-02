@@ -56,6 +56,7 @@ If ($UPN){
         try{
             Write-Output "Connecting to O365"
             Connect-MsolService -Credential $credential
+            Write-Output "Connected to O365"
         }
         catch{
             Write-Output "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
@@ -73,7 +74,6 @@ If ($UPN){
             Return
         }
         try{
-            Write-Output "Connected to O365"
             Write-Output "Conneting to Azure AD"
             Connect-AzureAD -Credential $credential
             Write-Output "Connected to Azure AD"
