@@ -23,5 +23,3 @@ project.lock.json
 .secrets
 appsettings.json
 local.settings.json
-GITupload.ps1
-TFSupload.ps1
