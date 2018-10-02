@@ -10,4 +10,6 @@ The functions are essentially REST APIs which can accept input parameters via HT
 
 ## Learn more
 
-Check the functions' documentations for further details on what the individual functions do.
+Check the Individual Functions' documentations for further details on what the individual functions do.
+
+You can learn more on Azure Functions [here](https://docs.microsoft.com/en-us/azure/azure-functions/)
