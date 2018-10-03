@@ -1,11 +1,11 @@
-# List MFA Enabled Users - PowerShell
+# RevokeUserRefreshToken - PowerShell
 
-This Azure function retrieves the list of user accounts that have Multi Factor Authentication enabled either directly or via conditional access.
+This `HttpTrigger` invalidates the refresh tokens issued to applications and/or session cookies in a browser for a user.
 
 ## How it works
 
-When you call the function, be sure you checkout which security rules you apply. If you're using an apikey, you'll need to include that in your request.
+The function accepts a User's `UserPrincipalName` in JSON  format, verifies if this is a valid user account. For a valid user account, this function will invalidate the refresh tokens issued to applications and/or session cookies in a browser.
 
 ## Learn more
 
-<TODO> Documentation
+You can learn more on Azure Functions [here](https://docs.microsoft.com/en-us/azure/azure-functions/)
