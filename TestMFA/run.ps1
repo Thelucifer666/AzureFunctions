@@ -1,5 +1,6 @@
 $requestBody = Get-Content $req -Raw | ConvertFrom-Json
 $UPN = $requestBody.UserPrincipalName
+Write-Output "$($UPN)"
 Write-Output "Function started execution at $(Get-Date)"
 If ($UPN){
     If($UPN.Count -eq 1){
@@ -36,7 +37,7 @@ If ($UPN){
             Write-Output "Imported MSOnline PS Module"
             Write-Output "Importing AzureAD PS Module"
             Import-Module AzureAD
-            Write-Output "Imported MSOnline PS Module"
+            Write-Output "Imported AzureAD PS Module"
         }
         catch{
             $O = New-Object PSCustomObject -Property @{
@@ -96,6 +97,7 @@ If ($UPN){
         try{
             Write-Output "Get user properties from MSOnine"
             $User = Get-MsolUser -UserPrincipalName $UPN -ErrorAction SilentlyContinue
+            Write-Output "$User"
             $g = new-object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
             $g.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29","0b07dff6-392e-438c-9298-20c1a6a86077","4e086602-3259-40e2-b7c7-92cc7d99dded"
             if ($User){
