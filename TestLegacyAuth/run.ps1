@@ -18,7 +18,7 @@ If ($UPN){
                 Result = "Failure"
                 UserPrincipalName = $UPN
                 Type = $null
-                LegacyAuthConditionalAccess = $null
+                LegacyAuthPolicy = $null
                 Error = "Creating the credential object failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -32,7 +32,7 @@ If ($UPN){
             Write-Output "Updating PS Module Path environment variable"
             $env:PSModulePath = $env:PSModulePath + ";d:\home\site\wwwroot\bin\modules\"
             Write-Output "Importing AzureAD PS Module"
-            Import-Module AzureAD
+            Import-Module AzureAD -ErrorAction Stop
             Write-Output "Imported AzureAD PS Module"
         }
         catch{
@@ -40,7 +40,7 @@ If ($UPN){
                 Result = "Failure"
                 UserPrincipalName = $UPN
                 Type = $null
-                LegacyAuthConditionalAccess = $null
+                LegacyAuthPolicy = $null
                 Error = "Importing module failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -51,7 +51,7 @@ If ($UPN){
         }
         try{
             Write-Output "Conneting to Azure AD"
-            Connect-AzureAD -Credential $credential
+            Connect-AzureAD -Credential $credential -ErrorAction Stop
             Write-Output "Connected to Azure AD"
         }
         catch{
@@ -60,7 +60,7 @@ If ($UPN){
                 Result = "Failure"
                 UserPrincipalName = $UPN
                 Type = $null
-                LegacyAuthConditionalAccess = $null
+                LegacyAuthPolicy = $null
                 Error = "Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -82,15 +82,15 @@ If ($UPN){
                     $AccountType = "AzureAD"
                 }
                 If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
-                    $LegacyAuthConditionalAccess = "Disabled"
+                    $LegacyAuthPolicy = "Enabled"
                 } Else {
-                    $LegacyAuthConditionalAccess = "Enabled"
+                    $LegacyAuthPolicy = "Disabled"
                 }
                 $O = New-Object psobject -Property @{
                     Result = "Success"
                     UserPrincipalName = $User.UserPrincipalName
                     Type = $AccountType
-                    LegacyAuthConditionalAccess = $LegacyAuthConditionalAccess
+                    LegacyAuthPolicy = $LegacyAuthPloicy
                     Error = $null
                 }
                 $Out = $O | ConvertTo-Json
@@ -101,7 +101,7 @@ If ($UPN){
                     Result = "Failure"
                     UserPrincipalName = $UPN
                     Type = $null
-                    LegacyAuthConditionalAccess = $null
+                    LegacyAuthPolicy = $null
                     Error = "Please provide a valid UserPrincipalName"
                 }
                 $Out = $O | ConvertTo-Json
@@ -114,7 +114,7 @@ If ($UPN){
                 Result = "Failure"
                 UserPrincipalName = $UPN
                 Type = $null
-                LegacyAuthConditionalAccess = $null
+                LegacyAuthPolicy = $null
                 Error = "Failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -127,7 +127,7 @@ If ($UPN){
             Result = "Failure"
             UserPrincipalName = $UPN
             Type = $null
-            LegacyAuthConditionalAccess = $null
+            LegacyAuthPolicy = $null
             Error = "Please provide ONE valid UserPrincipalName"
         }
         $Out = $O | ConvertTo-Json
@@ -140,7 +140,7 @@ If ($UPN){
         Result = "Failure"
         UserPrincipalName = $UPN
         Type = $null
-        LegacyAuthConditionalAccess = $null
+        LegacyAuthPolicy = $null
         Error = "Please provide a valid UserPrincipalName"
     }
     $Out = $O | ConvertTo-Json

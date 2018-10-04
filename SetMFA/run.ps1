@@ -1,5 +1,11 @@
 $requestBody = Get-Content $req -Raw | ConvertFrom-Json
 $UPN = $requestBody.UserPrincipalName
+$Result = "Failure"
+$AccountType = $null
+$UserMFASetting = $null
+$MFAPolicy = $null
+$DefaultMFAMethod = $null
+$ForceTokenExpiry = "False"
 Write-Output "$($UPN)"
 Write-Output "Function started execution at $(Get-Date)"
 If ($UPN){
@@ -15,12 +21,13 @@ If ($UPN){
         }
         catch{
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAPolicy = $null
-                UserMFASetting = $null
-                DefaultMFAMethod = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Creating the credential object failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -42,12 +49,13 @@ If ($UPN){
         }
         catch{
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAPolicy = $null
-                UserMFASetting = $null
-                DefaultMFAMethod = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Importing module failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -64,12 +72,13 @@ If ($UPN){
         catch{
             Write-Output "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAPolicy = $null
-                UserMFASetting = $null
-                DefaultMFAMethod = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -85,12 +94,13 @@ If ($UPN){
         catch{
             Write-Output "Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAPolicy = $null
-                UserMFASetting = $null
-                DefaultMFAMethod = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -102,7 +112,7 @@ If ($UPN){
             Write-Output "Get user properties from MSOnine"
             $User = Get-MsolUser -UserPrincipalName $UPN -ErrorAction SilentlyContinue
             Write-Output "$User"
-            $g = new-object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
+            $g = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
             $g.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29","0b07dff6-392e-438c-9298-20c1a6a86077","4e086602-3259-40e2-b7c7-92cc7d99dded"
             if ($User){
                 Write-Output "Processing user $($User.UserPrincipalName)"
@@ -111,28 +121,83 @@ If ($UPN){
                 } Else {
                     $AccountType = "AzureAD"
                 }
-                If($User.StrongAuthenticationRequirements){
-                    $UserMFASetting = $User.StrongAuthenticationRequirements.state
-                } Else {
-                    $UserMFASetting = "Disabled"
-                }
-                If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
-                    $MFAPolicy = "Enabled"
-                } Else {
-                    $MFAPolicy = "Disabled"
-                }
-                If($User.StrongAuthenticationMethods){
-                    $DefaultMFAMethod = ($User.StrongAuthenticationMethods | Where-Object{$_.IsDefault-eq "True"}).MethodType
-                } Else {
-                    $DefaultMFAMethod = "Not Set"
+                If($requestBody.Action -eq "Enable"){
+                    If($User.StrongAuthenticationRequirements){
+                        $UserMFASetting = $User.StrongAuthenticationRequirements.state
+                    } Else {
+                        $UserMFASetting = "Disabled"
+                        If ($requestBody.Force -eq "True"){
+                            $st = New-Object -TypeName Microsoft.Online.Administration.StrongAuthenticationRequirement 
+                            $st.RelyingParty = "*" 
+                            $st.State = "Enabled"
+                            $sta = @($st)
+                            Set-MsolUser -UserPrincipalName $user -StrongAuthenticationRequirements $sta -ErrorAction Stop
+                            $UserMFASetting = "Enabled"
+                        } Else {
+                            $UserMFASetting = "Disabled"
+                        }
+                    }
+                    If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
+                        $MFAPolicy = "Enabled"
+                        $MFAg = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
+                        $MFAg.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29"
+                        If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $MFAg -ErrorAction SilentlyContinue){
+                            $MFAPolicy = "Enabled"
+                        } Else {
+                            Add-AzureADGroupMember -ObjectId "a5f37d5e-5f32-4779-a710-51e4342ffd29" -RefObjectId $User.ObjectId -ErrorAction Stop
+                            $MFAPolicy = "Enabled"
+                        }
+                    } Else {
+                        $MFAPolicy = "Disabled"
+                        Add-AzureADGroupMember -ObjectId "a5f37d5e-5f32-4779-a710-51e4342ffd29" -RefObjectId $User.ObjectId -ErrorAction Stop
+                        $MFAPolicy = "Enabled"
+                    }
+                    If($User.StrongAuthenticationMethods){
+                        $DefaultMFAMethod = ($User.StrongAuthenticationMethods | Where-Object{$_.IsDefault-eq "True"}).MethodType
+                    } Else {
+                        $DefaultMFAMethod = "Not Set"
+                    }
+                    Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
+                    $ForceTokenExpiry = "True"
+                    $Result = "Success"
+                } elseif ($requestBody.Action -eq "Disable") {
+                    If($User.StrongAuthenticationMethods){
+                        $DefaultMFAMethod = ($User.StrongAuthenticationMethods | Where-Object{$_.IsDefault-eq "True"}).MethodType
+                        $stm = @()
+                        Set-MsolUser -ObjectId $User.ObjectId -StrongAuthenticationMethods $stm -ErrorAction Stop
+                        $DefaultMFAMethod = "Not Set"
+                    } Else {
+                        $DefaultMFAMethod = "Not Set"
+                    }
+                    If($User.StrongAuthenticationRequirements){
+                        $UserMFASetting = "Enabled"
+                        $sta = @()
+                        Set-MsolUser -ObjectId $user.ObjectId -StrongAuthenticationRequirements $sta -ErrorAction Stop
+                        $UserMFASetting = "Disabled"
+                    } Else {
+                        $UserMFASetting = "Disabled"
+                    }
+                    If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
+                        $MFAPolicy = "Enabled"
+                        foreach($group in (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue)){
+                            Remove-AzureADGroupMember -ObjectId $group -MemberId $User.ObjectId -ErrorAction Stop
+                        }
+                        $MFAPolicy = "Disabled"
+                    } Else {
+                        $MFAPolicy = "Disabled"
+                    }
+                    Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
+                    $ForceTokenExpiry = "True"
+                    $Result = "Success"
                 }
                 $O = New-Object psobject -Property @{
-                    Result = "Success"
+                    Result = $Result
                     UserPrincipalName = $User.UserPrincipalName
                     Type = $AccountType
-                    UserMFASetting = $UserMFASetting
                     MFAPolicy = $MFAPolicy
+                    UserMFASetting = $UserMFASetting
                     DefaultMFAMethod = $DefaultMFAMethod
+                    ForceTokenExpiry = $ForceTokenExpiry
                     Error = $null
                 }
                 $Out = $O | ConvertTo-Json
@@ -140,12 +205,13 @@ If ($UPN){
                 Out-File -Encoding Ascii -FilePath $res -inputObject $out
             } Else {
                 $O = New-Object psobject -Property @{
-                    Result = "Failure"
+                    Result = $Result
                     UserPrincipalName = $UPN
-                    Type = $null
-                    MFAPolicy = $null
-                    UserMFASetting = $null
-                    DefaultMFAMethod = $null
+                    Type = $AccountType
+                    MFAPolicy = $MFAPolicy
+                    UserMFASetting = $UserMFASetting
+                    DefaultMFAMethod = $DefaultMFAMethod
+                    ForceTokenExpiry = $ForceTokenExpiry
                     Error = "Please provide a valid UserPrincipalName"
                 }
                 $Out = $O | ConvertTo-Json
@@ -155,12 +221,13 @@ If ($UPN){
             }
         } catch {
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAPolicy = $null
-                UserMFASetting = $null
-                DefaultMFAMethod = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -170,12 +237,13 @@ If ($UPN){
         }
     } Else {
         $O = New-Object psobject -Property @{
-            Result = "Failure"
+            Result = $Result
             UserPrincipalName = $UPN
-            Type = $null
-            MFAPolicy = $null
-            UserMFASetting = $null
-            DefaultMFAMethod = $null
+            Type = $AccountType
+            MFAPolicy = $MFAPolicy
+            UserMFASetting = $UserMFASetting
+            DefaultMFAMethod = $DefaultMFAMethod
+            ForceTokenExpiry = $ForceTokenExpiry
             Error = "Please provide ONE valid UserPrincipalName"
         }
         $Out = $O | ConvertTo-Json
@@ -185,12 +253,13 @@ If ($UPN){
     }
 } Else {
     $O = New-Object psobject -Property @{
-        Result = "Failure"
+        Result = $Result
         UserPrincipalName = $UPN
-        Type = $null
-        MFAPolicy = $null
-        UserMFASetting = $null
-        DefaultMFAMethod = $null
+        Type = $AccountType
+        MFAPolicy = $MFAPolicy
+        UserMFASetting = $UserMFASetting
+        DefaultMFAMethod = $DefaultMFAMethod
+        ForceTokenExpiry = $ForceTokenExpiry
         Error = "Please provide a valid UserPrincipalName"
     }
     $Out = $O | ConvertTo-Json
