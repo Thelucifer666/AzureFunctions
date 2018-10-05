@@ -2,8 +2,7 @@ $requestBody = Get-Content $req -Raw | ConvertFrom-Json
 $UPN = $requestBody.UserPrincipalName
 $Result = "Failure"
 $AccountType = $null
-$MAMPolicy = $null
-$EMSLicenseStatus = $null
+$LegacyAuthPolicy = $null
 $ForceTokenExpiry = "False"
 Write-Output "$($UPN)"
 Write-Output "Function started execution at $(Get-Date)"
@@ -23,8 +22,7 @@ If ($UPN){
                 Result = $Result
                 UserPrincipalName = $UPN
                 Type = $AccountType
-                MAMPolicy = $MAMPolicy
-                EMSLicenseStatus = $EMSLicenseStatus
+                LegacyAuthPolicy = $LegacyAuthPolicy
                 ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Creating the credential object failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
@@ -47,8 +45,7 @@ If ($UPN){
                 Result = $Result
                 UserPrincipalName = $UPN
                 Type = $AccountType
-                MAMPolicy = $MAMPolicy
-                EMSLicenseStatus = $EMSLicenseStatus
+                LegacyAuthPolicy = $LegacyAuthPolicy
                 ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Importing module failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
@@ -69,8 +66,7 @@ If ($UPN){
                 Result = $Result
                 UserPrincipalName = $UPN
                 Type = $AccountType
-                MAMPolicy = $MAMPolicy
-                EMSLicenseStatus = $EMSLicenseStatus
+                LegacyAuthPolicy = $LegacyAuthPolicy
                 ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -80,11 +76,11 @@ If ($UPN){
             Return
         }
         try{
-            Write-Output "Get user properties from MSOnine"
+            Write-Output "Get user properties from AzureAD"
             $User = Get-AzureADUser -Filter "Userprincipalname eq '$($UPN)'" -ErrorAction SilentlyContinue
             Write-Output "$User"
             $g = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
-            $g.GroupIds = "0b07dff6-392e-438c-9298-20c1a6a86077","4e086602-3259-40e2-b7c7-92cc7d99dded","daad0aa3-77af-43ae-bd44-31961f4cbe2a","e96bf8a2-c509-4bd1-acca-6889bdea352f"
+            $g.GroupIds = "0b07dff6-392e-438c-9298-20c1a6a86077","4e086602-3259-40e2-b7c7-92cc7d99dded","f226447b-9481-497e-b171-996a77f8e81c"
             if ($User){
                 Write-Output "Processing user $($User.UserPrincipalName)"
                 if($User.ImmutableId){
@@ -94,61 +90,42 @@ If ($UPN){
                 }
                 If($requestBody.Action -eq "Enable"){
                     If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
-                        $MAMPolicy = "Enabled"
-                        $MAMg = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
-                        $MAMg.GroupIds = "daad0aa3-77af-43ae-bd44-31961f4cbe2a"
-                        If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $MAMg -ErrorAction SilentlyContinue){
-                            $MAMPolicy = "Enabled"
+                        $LegacyAuthPolicy = "Enabled"
+                        $LegacyAuthg = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
+                        $LegacyAuthg.GroupIds = "f226447b-9481-497e-b171-996a77f8e81c"
+                        If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $LegacyAuthg -ErrorAction SilentlyContinue){
+                            $LegacyAuthPolicy = "Enabled"
                         } Else {
-                            Add-AzureADGroupMember -ObjectId "daad0aa3-77af-43ae-bd44-31961f4cbe2a" -RefObjectId $User.ObjectId -ErrorAction Stop
-                            $MAMPolicy = "Enabled"
+                            Add-AzureADGroupMember -ObjectId "f226447b-9481-497e-b171-996a77f8e81c" -RefObjectId $User.ObjectId -ErrorAction Stop
+                            $LegacyAuthPolicy = "Enabled"
                         }
                     } Else {
-                        $MAMPolicy = "Disabled"
-                        Add-AzureADGroupMember -ObjectId "daad0aa3-77af-43ae-bd44-31961f4cbe2a" -RefObjectId $User.ObjectId -ErrorAction Stop
-                        $MAMPolicy = "Enabled"
+                        $LegacyAuthPolicy = "Disabled"
+                        Add-AzureADGroupMember -ObjectId "f226447b-9481-497e-b171-996a77f8e81c" -RefObjectId $User.ObjectId -ErrorAction Stop
+                        $LegacyAuthPolicy = "Enabled"
                     }
                     Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
                     $ForceTokenExpiry = "True"
-                    Write-Output "Get the Enterprise Mobility and Security License SKUId"
-                    $EMSSkuId = (Get-AzureADSubscribedSku | Where-Object {$_.SkuPartNumber -match 'EMS'}).SkuId
-                    Write-Output "Verify if User has EMS License assigned"
-                    $UserEMSLicense = $User.AssignedLicenses | Where-Object {$_.SkuID -eq $EMSSkuId}
-                    If($UserEMSLicense){
-                        $EMSLicenseStatus = "Assigned"
-                    } Else {
-                        $EMSLicenseStatus = "Not Assigned"
-                    }
                     $Result = "Success"
                 } elseif ($requestBody.Action -eq "Disable") {
                     If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
-                        $MAMPolicy = "Enabled"
+                        $LegacyAuthPolicy = "Enabled"
                         foreach($group in (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue)){
                             Remove-AzureADGroupMember -ObjectId $group -MemberId $User.ObjectId -ErrorAction Stop
                         }
-                        $MAMPolicy = "Disabled"
+                        $LegacyAuthPolicy = "Disabled"
                     } Else {
-                        $MAMPolicy = "Disabled"
+                        $LegacyAuthPolicy = "Disabled"
                     }
                     Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
                     $ForceTokenExpiry = "True"
-                    Write-Output "Get the Enterprise Mobility and Security License SKUId"
-                    $EMSSkuId = (Get-AzureADSubscribedSku | Where-Object {$_.SkuPartNumber -match 'EMS'}).SkuId
-                    Write-Output "Verify if User has EMS License assigned"
-                    $UserEMSLicense = $User.AssignedLicenses | Where-Object {$_.SkuID -eq $EMSSkuId}
-                    If($UserEMSLicense){
-                        $EMSLicenseStatus = "Assigned"
-                    } Else {
-                        $EMSLicenseStatus = "Not Assigned"
-                    }
                     $Result = "Success"
                 }
                 $O = New-Object psobject -Property @{
                     Result = $Result
                     UserPrincipalName = $User.UserPrincipalName
                     Type = $AccountType
-                    MAMPolicy = $MAMPolicy
-                    EMSLicenseStatus = $EMSLicenseStatus
+                    LegacyAuthPolicy = $LegacyAuthPolicy
                     ForceTokenExpiry = $ForceTokenExpiry
                     Error = $null
                 }
@@ -161,8 +138,7 @@ If ($UPN){
                     Result = $Result
                     UserPrincipalName = $UPN
                     Type = $AccountType
-                    MAMPolicy = $MAMPolicy
-                    EMSLicenseStatus = $EMSLicenseStatus
+                    LegacyAuthPolicy = $LegacyAuthPolicy
                     ForceTokenExpiry = $ForceTokenExpiry
                     Error = "Please provide a valid UserPrincipalName"
                 }
@@ -176,8 +152,7 @@ If ($UPN){
                 Result = $Result
                 UserPrincipalName = $UPN
                 Type = $AccountType
-                MAMPolicy = $MAMPolicy
-                EMSLicenseStatus = $EMSLicenseStatus
+                LegacyAuthPolicy = $LegacyAuthPolicy
                 ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -206,8 +181,7 @@ If ($UPN){
         Result = $Result
         UserPrincipalName = $UPN
         Type = $AccountType
-        MAMPolicy = $MAMPolicy
-        EMSLicenseStatus = $EMSLicenseStatus
+        LegacyAuthPolicy = $LegacyAuthPolicy
         ForceTokenExpiry = $ForceTokenExpiry
         Error = "Please provide a valid UserPrincipalName"
     }

@@ -38,6 +38,9 @@ If ($UPN){
             Write-Output "Credentials obtained"
             Write-Output "Updating PS Module Path environment variable"
             $env:PSModulePath = $env:PSModulePath + ";d:\home\site\wwwroot\bin\modules\"
+            Write-Output "Importing MSOnline PS Module"
+            Import-Module MSOnline -ErrorAction Stop
+            Write-Output "Imported MSOnline PS Module"
             Write-Output "Importing AzureAD PS Module"
             Import-Module AzureAD -ErrorAction Stop
             Write-Output "Imported AzureAD PS Module"
@@ -52,6 +55,27 @@ If ($UPN){
                 ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Importing module failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
+            }
+            $Out = $O | ConvertTo-Json
+            $Timer.Stop()
+            Out-File -Encoding Ascii -FilePath $res -inputObject $Out
+            Return
+        }
+        try{
+            Write-Output "Connecting to O365"
+            Connect-MsolService -Credential $credential -ErrorAction Stop
+            Write-Output "Connected to O365"
+        }
+        catch{
+            Write-Output "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
+            $O = New-Object PSCustomObject -Property @{
+                Result = $Result
+                UserPrincipalName = $UPN
+                Type = $AccountType
+                MAMPolicy = $MAMPolicy
+                EMSLicenseStatus = $EMSLicenseStatus
+                ForceTokenExpiry = $ForceTokenExpiry
+                Error = "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
             $Timer.Stop()
@@ -80,7 +104,7 @@ If ($UPN){
             Return
         }
         try{
-            Write-Output "Get user properties from MSOnine"
+            Write-Output "Get user properties from AzureAD"
             $User = Get-AzureADUser -Filter "Userprincipalname eq '$($UPN)'" -ErrorAction SilentlyContinue
             Write-Output "$User"
             $g = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
@@ -108,39 +132,41 @@ If ($UPN){
                         Add-AzureADGroupMember -ObjectId "daad0aa3-77af-43ae-bd44-31961f4cbe2a" -RefObjectId $User.ObjectId -ErrorAction Stop
                         $MAMPolicy = "Enabled"
                     }
-                    Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
-                    $ForceTokenExpiry = "True"
-                    Write-Output "Get the Enterprise Mobility and Security License SKUId"
-                    $EMSSkuId = (Get-AzureADSubscribedSku | Where-Object {$_.SkuPartNumber -match 'EMS'}).SkuId
                     Write-Output "Verify if User has EMS License assigned"
+                    $EMSSkuId = (Get-AzureADSubscribedSku | Where-Object {$_.SkuPartNumber -match 'EMS'}).SkuId
                     $UserEMSLicense = $User.AssignedLicenses | Where-Object {$_.SkuID -eq $EMSSkuId}
                     If($UserEMSLicense){
                         $EMSLicenseStatus = "Assigned"
                     } Else {
                         $EMSLicenseStatus = "Not Assigned"
+                        Set-MsolUserLicense -UserPrincipalName $User.UserPrincipalName -AddLicenses "lionbridge:EMS" -ErrorAction Stop -Verbose
+                        $EMSLicenseStatus = "Assigned"
                     }
+                    Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop -Verbose
+                    $ForceTokenExpiry = "True"
                     $Result = "Success"
                 } elseif ($requestBody.Action -eq "Disable") {
                     If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
                         $MAMPolicy = "Enabled"
                         foreach($group in (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue)){
-                            Remove-AzureADGroupMember -ObjectId $group -MemberId $User.ObjectId -ErrorAction Stop
+                            Remove-AzureADGroupMember -ObjectId $group -MemberId $User.ObjectId -ErrorAction Stop -Verbose
                         }
                         $MAMPolicy = "Disabled"
                     } Else {
                         $MAMPolicy = "Disabled"
                     }
-                    Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
-                    $ForceTokenExpiry = "True"
-                    Write-Output "Get the Enterprise Mobility and Security License SKUId"
-                    $EMSSkuId = (Get-AzureADSubscribedSku | Where-Object {$_.SkuPartNumber -match 'EMS'}).SkuId
                     Write-Output "Verify if User has EMS License assigned"
+                    $EMSSkuId = (Get-AzureADSubscribedSku | Where-Object {$_.SkuPartNumber -match 'EMS'}).SkuId
                     $UserEMSLicense = $User.AssignedLicenses | Where-Object {$_.SkuID -eq $EMSSkuId}
                     If($UserEMSLicense){
                         $EMSLicenseStatus = "Assigned"
+                        Set-MsolUserLicense -UserPrincipalName $User.UserPrincipalName -RemoveLicenses "lionbridge:EMS" -ErrorAction Stop -Verbose
+                        $EMSLicenseStatus = "Not Assigned"
                     } Else {
                         $EMSLicenseStatus = "Not Assigned"
                     }
+                    Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
+                    $ForceTokenExpiry = "True"
                     $Result = "Success"
                 }
                 $O = New-Object psobject -Property @{

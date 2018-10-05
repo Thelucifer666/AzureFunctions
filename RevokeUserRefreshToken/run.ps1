@@ -66,7 +66,7 @@ If ($UPN){
             Return
         }
         try{
-            Write-Output "Get user properties from MSOnine"
+            Write-Output "Get user properties from AzureAD"
             $User = Get-AzureADUser -Filter "UserPrincipalName eq '$($UPN)'" -ErrorAction SilentlyContinue
             Write-Output "$User"
             if ($User){
@@ -86,6 +86,7 @@ If ($UPN){
                 $Out = $O | ConvertTo-Json
                 $Timer.Stop()
                 Out-File -Encoding Ascii -FilePath $res -inputObject $out
+                Return
             } Else {
                 $O = New-Object psobject -Property @{
                     Result = "Failure"

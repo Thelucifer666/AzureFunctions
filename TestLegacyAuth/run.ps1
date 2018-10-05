@@ -90,12 +90,13 @@ If ($UPN){
                     Result = "Success"
                     UserPrincipalName = $User.UserPrincipalName
                     Type = $AccountType
-                    LegacyAuthPolicy = $LegacyAuthPloicy
+                    LegacyAuthPolicy = $LegacyAuthPolicy
                     Error = $null
                 }
                 $Out = $O | ConvertTo-Json
                 $Timer.Stop()
                 Out-File -Encoding Ascii -FilePath $res -inputObject $out
+                Return
             } Else {
                 $O = New-Object psobject -Property @{
                     Result = "Failure"

@@ -1,5 +1,12 @@
 $requestBody = Get-Content $req -Raw | ConvertFrom-Json
 $UPN = $requestBody.UserPrincipalName
+$Result = "Failure"
+$AccountType = $null
+$UserMFASetting = $null
+$MFAPolicy = $null
+$DefaultMFAMethod = $null
+$ClearMFAMethod = "False"
+$ForceTokenExpiry = "False"
 Write-Output "$($UPN)"
 Write-Output "Function started execution at $(Get-Date)"
 If ($UPN){
@@ -15,11 +22,14 @@ If ($UPN){
         }
         catch{
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAConditionalAccess = $null
-                UserMFASetting = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ClearMFAMethod = $ClearMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Creating the credential object failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -33,19 +43,22 @@ If ($UPN){
             Write-Output "Updating PS Module Path environment variable"
             $env:PSModulePath = $env:PSModulePath + ";d:\home\site\wwwroot\bin\modules\"
             Write-Output "Importing MSOnline PS Module"
-            Import-Module MSOnline
+            Import-Module MSOnline -ErrorAction Stop
             Write-Output "Imported MSOnline PS Module"
             Write-Output "Importing AzureAD PS Module"
-            Import-Module AzureAD
+            Import-Module AzureAD -ErrorAction Stop
             Write-Output "Imported AzureAD PS Module"
         }
         catch{
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAConditionalAccess = $null
-                UserMFASetting = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ClearMFAMethod = $ClearMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Importing module failed.
                 $($_.Invocationinfo.MyCommand) at position $($_.Invocationinfo.positionmessage) failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
@@ -56,17 +69,20 @@ If ($UPN){
         }
         try{
             Write-Output "Connecting to O365"
-            Connect-MsolService -Credential $credential
+            Connect-MsolService -Credential $credential -ErrorAction Stop
             Write-Output "Connected to O365"
         }
         catch{
             Write-Output "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAConditionalAccess = $null
-                UserMFASetting = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ClearMFAMethod = $ClearMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Connecttion to O365 failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -76,17 +92,20 @@ If ($UPN){
         }
         try{
             Write-Output "Conneting to Azure AD"
-            Connect-AzureAD -Credential $credential
+            Connect-AzureAD -Credential $credential -ErrorAction Stop
             Write-Output "Connected to Azure AD"
         }
         catch{
             Write-Output "Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAConditionalAccess = $null
-                UserMFASetting = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ClearMFAMethod = $ClearMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Connecttion to Azure AD failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -98,7 +117,7 @@ If ($UPN){
             Write-Output "Get user properties from MSOnine"
             $User = Get-MsolUser -UserPrincipalName $UPN -ErrorAction SilentlyContinue
             Write-Output "$User"
-            $g = new-object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
+            $g = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
             $g.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29","0b07dff6-392e-438c-9298-20c1a6a86077","4e086602-3259-40e2-b7c7-92cc7d99dded"
             if ($User){
                 Write-Output "Processing user $($User.UserPrincipalName)"
@@ -113,28 +132,58 @@ If ($UPN){
                     $UserMFASetting = "Disabled"
                 }
                 If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $g -ErrorAction SilentlyContinue){
-                    $MFAConditionalAccess = "Enabled"
+                    $MFAPolicy = "Enabled"
+                    $MFAg = New-Object Microsoft.Open.AzureAD.Model.GroupIdsForMembershipCheck
+                    $MFAg.GroupIds = "a5f37d5e-5f32-4779-a710-51e4342ffd29"
+                    If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $MFAg -ErrorAction SilentlyContinue){
+                        $MFAPolicy = "Enabled"
+                    } Else {
+                        Add-AzureADGroupMember -ObjectId "a5f37d5e-5f32-4779-a710-51e4342ffd29" -RefObjectId $User.ObjectId -ErrorAction Stop
+                        $MFAPolicy = "Enabled"
+                    }
                 } Else {
-                    $MFAConditionalAccess = "Disabled"
+                    $MFAPolicy = "Disabled"
+                    Add-AzureADGroupMember -ObjectId "a5f37d5e-5f32-4779-a710-51e4342ffd29" -RefObjectId $User.ObjectId -ErrorAction Stop
+                    $MFAPolicy = "Enabled"
                 }
+                If($User.StrongAuthenticationMethods){
+                    $DefaultMFAMethod = ($User.StrongAuthenticationMethods | Where-Object{$_.IsDefault-eq "True"}).MethodType
+                    $stm = @()
+                    Set-MsolUser -ObjectId $User.ObjectId -StrongAuthenticationMethods $stm -ErrorAction Stop
+                    $DefaultMFAMethod = "Not Set"
+                    $ClearMFAMethod = "True"
+                } Else {
+                    $DefaultMFAMethod = "Not Set"
+                }
+                Revoke-AzureADUserAllRefreshToken -ObjectId $User.ObjectId -ErrorAction Stop
+                $ForceTokenExpiry = "True"
+                $Result = "Success"
+                
                 $O = New-Object psobject -Property @{
-                    Result = "Success"
+                    Result = $Result
                     UserPrincipalName = $User.UserPrincipalName
                     Type = $AccountType
+                    MFAPolicy = $MFAPolicy
                     UserMFASetting = $UserMFASetting
-                    MFAConditionalAccess = $MFAConditionalAccess
+                    DefaultMFAMethod = $DefaultMFAMethod
+                    ClearMFAMethod = $ClearMFAMethod
+                    ForceTokenExpiry = $ForceTokenExpiry
                     Error = $null
                 }
                 $Out = $O | ConvertTo-Json
                 $Timer.Stop()
                 Out-File -Encoding Ascii -FilePath $res -inputObject $out
+                Return
             } Else {
                 $O = New-Object psobject -Property @{
-                    Result = "Failure"
+                    Result = $Result
                     UserPrincipalName = $UPN
-                    Type = $null
-                    MFAConditionalAccess = $null
-                    UserMFASetting = $null
+                    Type = $AccountType
+                    MFAPolicy = $MFAPolicy
+                    UserMFASetting = $UserMFASetting
+                    DefaultMFAMethod = $DefaultMFAMethod
+                    ClearMFAMethod = $ClearMFAMethod
+                    ForceTokenExpiry = $ForceTokenExpiry
                     Error = "Please provide a valid UserPrincipalName"
                 }
                 $Out = $O | ConvertTo-Json
@@ -144,11 +193,14 @@ If ($UPN){
             }
         } catch {
             $O = New-Object PSCustomObject -Property @{
-                Result = "Failure"
+                Result = $Result
                 UserPrincipalName = $UPN
-                Type = $null
-                MFAConditionalAccess = $null
-                UserMFASetting = $null
+                Type = $AccountType
+                MFAPolicy = $MFAPolicy
+                UserMFASetting = $UserMFASetting
+                DefaultMFAMethod = $DefaultMFAMethod
+                ClearMFAMethod = $ClearMFAMethod
+                ForceTokenExpiry = $ForceTokenExpiry
                 Error = "Failed with the following exception message: $($_.Exception.Message); error code: $($_.Exception.ErrorCode); Inner exception: $($_.Exception.InnerException); HResult: $($_.Exception.HResult); Category: $($_.CategoryInfo.Category)"
             }
             $Out = $O | ConvertTo-Json
@@ -158,11 +210,14 @@ If ($UPN){
         }
     } Else {
         $O = New-Object psobject -Property @{
-            Result = "Failure"
+            Result = $Result
             UserPrincipalName = $UPN
-            Type = $null
-            MFAConditionalAccess = $null
-            UserMFASetting = $null
+            Type = $AccountType
+            MFAPolicy = $MFAPolicy
+            UserMFASetting = $UserMFASetting
+            DefaultMFAMethod = $DefaultMFAMethod
+            ClearMFAMethod = $ClearMFAMethod
+            ForceTokenExpiry = $ForceTokenExpiry
             Error = "Please provide ONE valid UserPrincipalName"
         }
         $Out = $O | ConvertTo-Json
@@ -172,11 +227,14 @@ If ($UPN){
     }
 } Else {
     $O = New-Object psobject -Property @{
-        Result = "Failure"
+        Result = $Result
         UserPrincipalName = $UPN
-        Type = $null
-        MFAConditionalAccess = $null
-        UserMFASetting = $null
+        Type = $AccountType
+        MFAPolicy = $MFAPolicy
+        UserMFASetting = $UserMFASetting
+        DefaultMFAMethod = $DefaultMFAMethod
+        ClearMFAMethod = $ClearMFAMethod
+        ForceTokenExpiry = $ForceTokenExpiry
         Error = "Please provide a valid UserPrincipalName"
     }
     $Out = $O | ConvertTo-Json
