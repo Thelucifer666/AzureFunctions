@@ -131,7 +131,7 @@ If ($UPN){
                             $st.RelyingParty = "*" 
                             $st.State = "Enabled"
                             $sta = @($st)
-                            Set-MsolUser -UserPrincipalName $user -StrongAuthenticationRequirements $sta -ErrorAction Stop
+                            Set-MsolUser -UserPrincipalName $user.UserPrincipalName -StrongAuthenticationRequirements $sta -ErrorAction Stop
                             $UserMFASetting = "Enabled"
                         } Else {
                             $UserMFASetting = "Disabled"

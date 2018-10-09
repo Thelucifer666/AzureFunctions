@@ -138,13 +138,10 @@ If ($UPN){
                     If (Select-AzureADGroupIdsUserIsMemberOf -ObjectId $User.ObjectId -GroupIdsForMembershipCheck $MFAg -ErrorAction SilentlyContinue){
                         $MFAPolicy = "Enabled"
                     } Else {
-                        Add-AzureADGroupMember -ObjectId "a5f37d5e-5f32-4779-a710-51e4342ffd29" -RefObjectId $User.ObjectId -ErrorAction Stop
                         $MFAPolicy = "Enabled"
                     }
                 } Else {
                     $MFAPolicy = "Disabled"
-                    Add-AzureADGroupMember -ObjectId "a5f37d5e-5f32-4779-a710-51e4342ffd29" -RefObjectId $User.ObjectId -ErrorAction Stop
-                    $MFAPolicy = "Enabled"
                 }
                 If($User.StrongAuthenticationMethods){
                     $DefaultMFAMethod = ($User.StrongAuthenticationMethods | Where-Object{$_.IsDefault-eq "True"}).MethodType
